@@ -28,13 +28,15 @@ class Package(object):
         The datetime when this package was uploaded (default now)
     summary : str, optional
         The summary of the package
+    origin : str, optional
+        The origin of the package: "upload" if added directly or "fallback" if pulled from another index
     **kwargs :
         Metadata about the package
 
     """
 
     def __init__(
-        self, name, version, filename, last_modified=None, summary=None, **kwargs
+        self, name, version, filename, last_modified=None, summary=None, origin=None, **kwargs
     ):
         self.name = normalize_name(name)
         self.version = version
@@ -48,6 +50,7 @@ class Package(object):
             self.last_modified = self.last_modified.replace(tzinfo=UTC)
         # Disallow empty string
         self.summary = summary or None
+        self.origin = origin or None
         # Filter out None or empty string
         self.data = {k: v for k, v in kwargs.items() if v}
 
@@ -116,6 +119,7 @@ class Package(object):
             "version": self.version,
             "url": self.get_url(request),
             "summary": self.summary,
+            "origin": self.origin,
         }
 
     def search_summary(self):

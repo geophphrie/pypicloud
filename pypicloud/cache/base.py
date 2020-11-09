@@ -32,6 +32,7 @@ class ICache(object):
         self.allow_overwrite = allow_overwrite
         self.allow_delete = allow_delete
         self.calculate_hashes = calculate_hashes
+        self.origin = None
 
     def new_package(self, *args, **kwargs) -> Package:
         return Package(*args, **kwargs)
@@ -99,6 +100,7 @@ class ICache(object):
         version: Optional[str] = None,
         summary: Optional[str] = None,
         requires_python: Optional[str] = None,
+        origin: Optional[str] = None,
     ) -> Package:
         """
         Save this package to the storage mechanism and to the cache
@@ -119,6 +121,8 @@ class ICache(object):
             The summary of the package
         requires_python : str, optional
             The Python version requirement
+        origin : str, optional
+            The origin of the package: either "upload" or "fallback"
 
         Returns
         -------
@@ -145,7 +149,7 @@ class ICache(object):
             metadata["hash_md5"] = hashlib.md5(file_data).hexdigest()
             data = BytesIO(file_data)
 
-        new_pkg = self.new_package(name, version, filename, summary=summary, **metadata)
+        new_pkg = self.new_package(name, version, filename, summary=summary, origin=origin, **metadata)
         self.storage.upload(new_pkg, data)
         self.save(new_pkg)
         return new_pkg

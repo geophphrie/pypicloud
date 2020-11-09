@@ -85,8 +85,19 @@ source
 ~~~~~~~~~~~~~~~~~~
 **Argument:** string, optional
 
-If present, all packages will be prefixed with this value when stored in S3.
+If present, packages will be prefixed with this value when stored in S3 or GCS.
 Use this to store your packages in a subdirectory, such as "packages/"
+
+``storage.upload_prefix``
+~~~~~~~~~~~~~~~~~~
+**Argument:** string, optional
+
+If present, packages that are uploaded directly to pypicloud will be prefixed
+with this value instead of storage.prefix when stored in S3 or GCS. Packages that are
+pulled from a remote index (when pypicloud.fallback = cache) will be stored using
+storage.prefix. Use this to keep your own uploaded packages separate from public packages.
+[Note: it is recommended to supply an explicit storage.prefix if using storage.upload_prefix -
+it will avoid extra processing when rebuilding the cache from storage.]
 
 ``storage.prepend_hash``
 ~~~~~~~~~~~~~~~~~~~~~~~~
