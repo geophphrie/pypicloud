@@ -169,7 +169,6 @@ class TestDynamoCache(unittest.TestCase):
         summaries = self.db.summary()
         self.assertEqual(len(summaries), 1)
 
-
 class TestRedisCache(unittest.TestCase):
 
     """ Tests for the RedisCache """

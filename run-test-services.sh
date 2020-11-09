@@ -33,7 +33,7 @@ main() {
     ensure-running pypi-redis 6379 redis
     ensure-running pypi-postgres 5432 postgres -e POSTGRES_PASSWORD= -e POSTGRES_DB=postgres
     ensure-running pypi-mysql 3306 mysql -e MYSQL_DATABASE=test -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-    ensure-running pypi-ldap 389 osixia/openldap -v "$(readlink -f ./ldap):/container/service/slapd/assets/config/bootstrap/ldif/custom" -- --loglevel debug --copy-service
+    ensure-running pypi-ldap 389 osixia/openldap -v "$(greadlink -f ./ldap):/container/service/slapd/assets/config/bootstrap/ldif/custom" -- --loglevel debug --copy-service
   fi
 }
 
