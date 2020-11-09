@@ -57,6 +57,7 @@
           <tr>
             <th>Package</th>
             <th>Description</th>
+            <th>Origin</th>
             <th>Updated</th>
           </tr>
         </thead>
@@ -64,6 +65,7 @@
           <tr ng-repeat="package in filtered = (packages | filter:searchText) | orderBy:'name' | startFrom:(currentPage - 1)*pageSize | limitTo:pageSize" ng-click="showPackage(package.name)">
             <td>{{ package.name }}</td>
             <td>{{ package.summary }}</td>
+            <td>{{ package.origin }}</td>
             <td>{{ package.last_modified * 1000 | date:'yyyy-MM-dd HH:mm' }}</td>
           </tr>
         </tbody>
