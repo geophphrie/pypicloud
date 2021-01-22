@@ -97,6 +97,7 @@ class SQLPackage(Package, Base):
     last_modified = Column(TZAwareDateTime(), index=True, nullable=False)
     summary = Column(String(255, convert_unicode=True), index=True, nullable=True)
     data = Column(JSONEncodedDict(), nullable=False)
+    origin = Column(String(16, convert_unicode=True), nullable=True)
 
 
 def create_schema(engine):
@@ -249,7 +250,7 @@ class SQLCache(ICache):
             .subquery()
         )
         rows = self.db.query(
-            SQLPackage.name, SQLPackage.last_modified, SQLPackage.summary
+            SQLPackage.name, SQLPackage.last_modified, SQLPackage.summary, SQLPackage.origin
         ).filter(
             (SQLPackage.name == subquery.c.name)
             & (SQLPackage.last_modified == subquery.c.last_modified)
@@ -263,7 +264,7 @@ class SQLCache(ICache):
                 continue
             seen_packages.add(row[0])
             packages.append(
-                {"name": row[0], "last_modified": row[1], "summary": row[2]}
+                {"name": row[0], "last_modified": row[1], "summary": row[2], "origin": row[3]}
             )
         return packages
 

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+# Mac/bsd have an old readlink without -f option. Alias to gnu version if installed.
+type -P greadlink >/dev/null && readlink() { greadlink $* ; }
+
 ensure-running() {
   local name="$1"; shift
   local port="$1"; shift
