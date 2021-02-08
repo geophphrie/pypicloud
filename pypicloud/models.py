@@ -48,8 +48,14 @@ class Package(object):
             self.last_modified = utcnow()
         if self.last_modified.tzinfo is None:
             self.last_modified = self.last_modified.replace(tzinfo=UTC)
-        # Disallow empty string
-        self.summary = summary or None
+        # Disallow empty summary string.
+        # 2021-02-01 - jtc - Also truncate to make sure we don't overrun the data column!
+        # See cache/sql.py for schema with column sizes. Length has been extended from original 255 to 1000
+        # as there are packages in pypi well over 255. E.g. msal==1.8.0 has a summary of length 281.
+        # I have not addressed name, version, filename although these also could potentially cause breakage.
+        # They are substantially longer than the maximum observed sizes (e.g. see https://martin-thoma.com/pypi-2020/ )
+        # and it might take some analysis to make sure that truncating would not cause other issues.
+        self.summary = summary[:1000] if summary else None
         self.origin = origin or None
         # Filter out None or empty string
         self.data = {k: v for k, v in kwargs.items() if v}
