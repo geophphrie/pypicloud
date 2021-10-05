@@ -1,4 +1,4 @@
-""" AWS Lambda handler that process S3 object notifications """
+"""AWS Lambda handler that process S3 object notifications"""
 import json
 import os
 import posixpath
@@ -7,7 +7,7 @@ import boto3
 
 
 def handle_s3_event(event, context):
-    """ Handle S3 object notification """
+    """Handle S3 object notification"""
     from pypicloud.cache import get_cache_impl
     from pypicloud.storage.s3 import S3Storage
     from pypicloud.util import parse_filename

@@ -1,4 +1,4 @@
-""" View for cleaner buildout calls """
+"""View for cleaner buildout calls"""
 from pyramid.view import view_config
 from pyramid_duh import addslash
 
@@ -14,7 +14,7 @@ from pypicloud.views.simple import packages_to_dict
 )
 @addslash
 def list_packages(request):
-    """ Render the list for all versions of all packages """
+    """Render the list for all versions of all packages"""
     names = request.db.distinct()
     # remove the ones that you are not allowed to see
     names = filter(lambda x: request.access.has_permission(x, "read"), names)

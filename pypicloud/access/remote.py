@@ -1,4 +1,4 @@
-""" Backend that defers to another server for access control """
+"""Backend that defers to another server for access control"""
 from .base import IAccessBackend
 
 
@@ -30,7 +30,7 @@ class RemoteAccessBackend(IAccessBackend):
         return kwargs
 
     def _req(self, uri, params=None):
-        """ Hit a server endpoint and return the json response """
+        """Hit a server endpoint and return the json response"""
         try:
             import requests
         except ImportError:  # pragma: no cover

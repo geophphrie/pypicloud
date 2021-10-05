@@ -1,4 +1,4 @@
-""" Classes that provide user and package permissions """
+"""Classes that provide user and package permissions"""
 from functools import partial
 
 from pyramid.path import DottedNameResolver
@@ -17,7 +17,7 @@ from .sql import SQLAccessBackend
 
 
 def includeme(config) -> None:
-    """ Configure the app """
+    """Configure the app"""
     settings = config.get_settings()
 
     resolver = DottedNameResolver(__name__)

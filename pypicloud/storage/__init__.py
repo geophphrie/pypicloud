@@ -1,4 +1,4 @@
-""" Storage backend implementations """
+"""Storage backend implementations"""
 from functools import partial
 from typing import Any, Callable
 
@@ -24,7 +24,7 @@ except ImportError:
 
 
 def get_storage_impl(settings) -> Callable[[Any], Any]:
-    """ Get and configure the storage backend wrapper """
+    """Get and configure the storage backend wrapper"""
     resolver = DottedNameResolver(__name__)
     storage = settings.get("pypi.storage", "file")
     if storage == "azure-blob":
