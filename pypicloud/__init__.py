@@ -1,4 +1,4 @@
-"""S3-backed pypi server"""
+""" S3-backed pypi server """
 import calendar
 import datetime
 import logging

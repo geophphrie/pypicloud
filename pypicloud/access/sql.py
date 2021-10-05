@@ -1,4 +1,4 @@
-"""Access backend for storing permissions in using SQLAlchemy"""
+""" Access backend for storing permissions in using SQLAlchemy """
 import zope.sqlalchemy
 from sqlalchemy import (
     Boolean,

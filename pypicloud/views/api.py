@@ -1,4 +1,4 @@
-"""Views for simple api calls that return json data"""
+""" Views for simple api calls that return json data """
 import logging
 import posixpath
 from contextlib import closing

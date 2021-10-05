@@ -1,4 +1,4 @@
-"""Store package data in DynamoDB"""
+""" Store package data in DynamoDB """
 import logging
 from collections import defaultdict
 from datetime import datetime

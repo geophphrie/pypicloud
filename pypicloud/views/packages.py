@@ -1,4 +1,4 @@
-"""View for cleaner buildout calls"""
+""" View for cleaner buildout calls """
 from pyramid.view import view_config
 from pyramid_duh import addslash
 

@@ -1,4 +1,4 @@
-"""Classes that provide user and package permissions"""
+""" Classes that provide user and package permissions """
 from functools import partial
 
 from pyramid.path import DottedNameResolver

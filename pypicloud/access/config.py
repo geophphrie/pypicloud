@@ -1,4 +1,4 @@
-"""Backend that reads access control rules from config file"""
+""" Backend that reads access control rules from config file """
 import logging
 
 from pyramid.settings import aslist

@@ -1,4 +1,4 @@
-"""Abstract backends that are backed by simple JSON"""
+""" Abstract backends that are backed by simple JSON """
 
 from .base import IAccessBackend, IMutableAccessBackend
 

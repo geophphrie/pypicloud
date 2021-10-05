@@ -1,4 +1,4 @@
-"""Commandline scripts"""
+""" Commandline scripts """
 import argparse
 import getpass
 import gzip

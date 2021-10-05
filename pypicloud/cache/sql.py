@@ -1,4 +1,4 @@
-"""Store package data in a SQL database"""
+""" Store package data in a SQL database """
 import json
 import logging
 

@@ -1,4 +1,4 @@
-"""Helpers for syncing packages into the cache in AWS Lambda"""
+""" Helpers for syncing packages into the cache in AWS Lambda """
 import argparse
 import json
 import logging

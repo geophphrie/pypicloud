@@ -1,4 +1,4 @@
-"""Store packages in Azure Blob Storage"""
+""" Store packages in Azure Blob Storage """
 import logging
 import os
 import posixpath

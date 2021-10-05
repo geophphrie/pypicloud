@@ -1,4 +1,4 @@
-"""Views for simple pip interaction"""
+""" Views for simple pip interaction """
 import logging
 import posixpath
 

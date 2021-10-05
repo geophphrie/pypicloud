@@ -1,4 +1,4 @@
-"""Simple replacement for distlib SimpleScrapingLocator"""
+""" Simple replacement for distlib SimpleScrapingLocator """
 import logging
 
 import distlib.locators

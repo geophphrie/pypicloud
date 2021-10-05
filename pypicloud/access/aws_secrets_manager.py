@@ -1,4 +1,4 @@
-"""Backend that defers to another server for access control"""
+""" Backend that defers to another server for access control """
 import json
 from json import JSONDecodeError
 

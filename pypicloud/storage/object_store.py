@@ -1,4 +1,4 @@
-"""Store packages in S3"""
+""" Store packages in S3 """
 import logging
 from binascii import hexlify
 from contextlib import contextmanager

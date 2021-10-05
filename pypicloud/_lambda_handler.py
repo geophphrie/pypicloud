@@ -1,4 +1,4 @@
-"""AWS Lambda handler that process S3 object notifications"""
+""" AWS Lambda handler that process S3 object notifications """
 import json
 import os
 import posixpath

@@ -1,4 +1,4 @@
-"""Backend that defers to another server for access control"""
+""" Backend that defers to another server for access control """
 from .base import IAccessBackend
 
 

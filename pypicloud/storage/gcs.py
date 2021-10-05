@@ -1,4 +1,4 @@
-"""Store packages in GCS"""
+""" Store packages in GCS """
 import io
 import json
 import logging

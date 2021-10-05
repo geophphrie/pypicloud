@@ -1,4 +1,4 @@
-"""Views"""
+""" Views """
 import logging
 import traceback
 

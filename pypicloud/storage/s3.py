@@ -1,4 +1,4 @@
-"""Store packages in S3"""
+""" Store packages in S3 """
 import logging
 import posixpath
 from datetime import timedelta

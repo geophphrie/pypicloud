@@ -1,4 +1,4 @@
-"""Store package data in redis"""
+""" Store package data in redis """
 import calendar
 import json
 import logging

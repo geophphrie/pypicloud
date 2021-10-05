@@ -1,4 +1,4 @@
-"""The access backend object base class"""
+""" The access backend object base class """
 import hashlib
 import hmac
 import time

@@ -1,4 +1,4 @@
-"""Base class for storage backends"""
+""" Base class for storage backends """
 from typing import BinaryIO, List, Tuple, Type
 
 from pyramid.request import Request

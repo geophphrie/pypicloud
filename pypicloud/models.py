@@ -1,4 +1,4 @@
-"""Model objects"""
+""" Model objects """
 import re
 from functools import total_ordering
 

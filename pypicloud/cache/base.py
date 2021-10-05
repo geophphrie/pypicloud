@@ -1,4 +1,4 @@
-"""Base class for all cache implementations"""
+""" Base class for all cache implementations """
 import hashlib
 import logging
 import posixpath

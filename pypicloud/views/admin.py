@@ -1,4 +1,4 @@
-"""API endpoints for admin controls"""
+""" API endpoints for admin controls """
 import gzip
 import json
 from io import BytesIO

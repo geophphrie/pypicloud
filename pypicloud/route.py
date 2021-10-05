@@ -1,4 +1,4 @@
-"""Tools and resources for traversal routing"""
+""" Tools and resources for traversal routing """
 import functools
 from typing import Any, Callable, Dict
 

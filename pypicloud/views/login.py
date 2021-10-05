@@ -1,4 +1,4 @@
-"""Render views for logging in and out of the web interface"""
+""" Render views for logging in and out of the web interface """
 from pyramid.httpexceptions import HTTPForbidden, HTTPFound
 from pyramid.security import NO_PERMISSION_REQUIRED, forget, remember
 from pyramid.view import view_config

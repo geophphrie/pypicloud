@@ -1,4 +1,4 @@
-"""Store packages as files on disk"""
+""" Store packages as files on disk """
 import json
 import os
 from binascii import hexlify
