@@ -5,10 +5,10 @@ from contextlib import closing
 from io import BytesIO
 from urllib.request import urlopen
 
-# pylint: disable=E0611,W0403
+# pylint: disable=E0611
 from paste.httpheaders import CACHE_CONTROL, CONTENT_DISPOSITION
 
-# pylint: enable=E0611,W0403
+# pylint: enable=E0611
 from pyramid.httpexceptions import HTTPBadRequest, HTTPForbidden, HTTPNotFound
 from pyramid.security import NO_PERMISSION_REQUIRED
 from pyramid.view import view_config
@@ -197,7 +197,7 @@ def register(request, password):
 @argify
 def change_password(request, old_password, new_password):
     """Change a user's password"""
-    if not request.access.verify_user(request.userid, old_password):
+    if not request.access.verify_user(request.authenticated_userid, old_password):
         return HTTPForbidden()
-    request.access.edit_user_password(request.userid, new_password)
+    request.access.edit_user_password(request.authenticated_userid, new_password)
     return request.response

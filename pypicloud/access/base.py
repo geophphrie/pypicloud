@@ -7,17 +7,12 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from passlib.apps import LazyCryptContext
 from passlib.utils import sys_bits
-from pyramid.security import (
-    ALL_PERMISSIONS,
-    Allow,
-    Authenticated,
-    Deny,
-    Everyone,
-    effective_principals,
-)
+from pyramid.security import ALL_PERMISSIONS, Allow, Authenticated, Deny, Everyone
 from pyramid.settings import aslist
 
 from pypicloud.util import get_environ_setting
+
+Admin = "admin"
 
 # Roughly tuned using https://bitbucket.org/ecollins/passlib/raw/default/choose_rounds.py
 # For 10ms. This differs from the passlib recommendation of 350ms due to the difference in use case
@@ -96,7 +91,7 @@ class IAccessBackend(object):
     mutable = False
     ROOT_ACL = [
         (Allow, Authenticated, "login"),
-        (Allow, "admin", ALL_PERMISSIONS),
+        (Allow, Admin, ALL_PERMISSIONS),
         (Deny, Everyone, ALL_PERMISSIONS),
     ]
 
@@ -188,17 +183,17 @@ class IAccessBackend(object):
 
     def has_permission(self, package: str, perm: str) -> bool:
         """Check if this user has a permission for a package"""
-        current_userid = self.request.userid
+        current_userid = self.request.authenticated_userid
         if current_userid is not None and self.is_admin(current_userid):
             return True
 
         perms = self.allowed_permissions(package)
-        for principal in effective_principals(self.request):
+        for principal in self.user_principals(current_userid):
             if perm in perms.get(principal, []):
                 return True
         return False
 
-    def user_principals(self, username: str) -> List[str]:
+    def user_principals(self, username: Optional[str]) -> List[str]:
         """
         Get a list of principals for a user
 
@@ -211,9 +206,11 @@ class IAccessBackend(object):
         principals : list
 
         """
+        if username is None:
+            return [Everyone]
         principals = ["user:" + username, Everyone, Authenticated]
         if self.is_admin(username):
-            principals.append("admin")
+            principals.append(Admin)
         for group in self.groups(username):
             principals.append("group:" + group)
         return principals
@@ -241,7 +238,7 @@ class IAccessBackend(object):
             return False
         elif group in ("authenticated", Authenticated):
             return True
-        elif group == "admin" and self.is_admin(username):
+        elif group in ("admin", Admin) and self.is_admin(username):
             return True
         else:
             return group in self.groups(username)
@@ -269,7 +266,7 @@ class IAccessBackend(object):
         """
         Return True if the user has permissions to update the pypi cache
         """
-        return self.in_any_group(self.request.userid, self.cache_update)
+        return self.in_any_group(self.request.authenticated_userid, self.cache_update)
 
     def need_admin(self) -> bool:
         """

@@ -1,0 +1,65 @@
+version: "3.9"
+services:
+  shell:
+    build: ./docker
+    volumes:
+      - .:/pypicloud
+    working_dir: /pypicloud
+    init: true
+    environment:
+      REDIS_HOST: redis
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: postgres
+      MYSQL_HOST: mysql
+      MYSQL_PASSWORD: iamroot
+      MYSQL_DB: test
+      LDAP_HOST: ldap
+      GITHUB_ACTIONS: $GITHUB_ACTIONS
+      GITHUB_TOKEN: $GITHUB_TOKEN
+      GITHUB_REF: $GITHUB_REF
+      GITHUB_HEAD_REF: $GITHUB_HEAD_REF
+    user: ${CURRENT_UID:?"Please run as follows 'CURRENT_UID=$(id -u):$(id -g) docker-compose up'"}
+    stdin_open: true
+    tty: true
+    depends_on:
+      - redis
+      - postgres
+      - mysql
+      - ldap
+  redis:
+    image: "redis"
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 10s
+  postgres:
+    image: 'postgres'
+    environment:
+      POSTGRES_PASSWORD: ''
+      POSTGRES_DB: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 40s
+  mysql:
+    image: 'mysql'
+    command: --character-set-server=utf8mb4
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: iamroot
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 2
+      start_period: 40s
+  ldap:
+    image: 'osixia/openldap'
+    volumes:
+      - ./ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom
+    command: ['--loglevel', 'debug', '--copy-service']

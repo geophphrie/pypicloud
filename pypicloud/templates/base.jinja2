@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-{% set is_admin = request.access.is_admin(request.userid) %}
+{% set is_admin = request.access.is_admin(request.authenticated_userid) %}
 <html ng-app="{% block ng_app %}pypicloud{% endblock %}">
 <head>
   <title>Pypicloud</title>
@@ -33,10 +33,11 @@ role="navigation">
 
 {% endblock %}
 {% block all_scripts %}
-  <script src="{{ 'pypicloud:static/js/lib/underscore/1.6.0/underscore-min.js' | static_url }}"></script>
+  <script src="{{ 'pypicloud:static/js/lib/underscore/1.13.1/underscore-umd-min.js' | static_url }}"></script>
   <script src="{{ 'pypicloud:static/js/lib/angularjs/1.2.14/angular.min.js' | static_url }}"></script>
   <script src="{{ 'pypicloud:static/js/lib/angularjs/1.2.14/angular-route.min.js' | static_url }}"></script>
   <script src="{{ 'pypicloud:static/js/lib/angularjs/1.2.14/angular-cookies.min.js' | static_url }}"></script>
+  <script src="{{ 'pypicloud:static/js/lib/angularjs/1.2.14/angular-sanitize.min.js' | static_url }}"></script>
   <script src="{{ 'pypicloud:static/js/lib/ui-bootstrap-tpls-0.10.0.min.js' | static_url }}"></script>
   <script src="{{ 'pypicloud:static/js/lib/angular-file-upload.min.js' | static_url }}"></script>
   <script src="{{ 'pypicloud:static/js/pypicloud.js' | static_url }}"></script>
@@ -44,7 +45,7 @@ role="navigation">
   <script src="{{ 'pypicloud:static/js/admin.js' | static_url }}"></script>
   {% endif %}
   <script type="text/javascript" charset="utf-8">
-    var USER = {{ request.userid | tojson | safe }};
+    var USER = {{ request.authenticated_userid | tojson | safe }};
     var IS_ADMIN = {{ is_admin | tojson | safe }};
     var ROOT = {{ request.app_url() | tojson | safe }};
     {% if request.custom_download_url %}
