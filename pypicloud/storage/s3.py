@@ -145,13 +145,27 @@ class S3Storage(ObjectStoreStorage):
         )
 
     def list(self, factory=Package):
+        # First get all of the packages from the main bucket_prefix.
         keys = self.bucket.objects.filter(Prefix=self.bucket_prefix)
         for summary in keys:
             # ObjectSummary has no metadata, so we have to fetch it.
             obj = summary.Object()
             pkg = self.package_from_object(obj, factory)
             if pkg is not None:
+                # If we have a separate upload prefix, flag THIS package as being a fallback. Otherwise
+                # we don't know enough to differentiate.
+                pkg.origin = "fallback" if self.upload_prefix else None
                 yield pkg
+        # If we have an upload_prefix, now go back and process anything that matches.
+        if self.upload_prefix:
+            keys = self.bucket.objects.filter(Prefix=self.upload_prefix)
+            for summary in keys:
+                # ObjectSummary has no metadata, so we have to fetch it.
+                obj = summary.Object()
+                pkg = self.package_from_object(obj, factory)
+                if pkg is not None:
+                    pkg.origin = "upload"
+                    yield pkg
 
     def _generate_url(self, package):
         """Generate a signed url to the S3 file"""

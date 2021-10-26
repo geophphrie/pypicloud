@@ -29,6 +29,7 @@ class ObjectStoreStorage(IStorage):
         request=None,
         expire_after=None,
         bucket_prefix=None,
+        upload_prefix=None,
         prepend_hash=None,
         redirect_urls=None,
         sse=None,
@@ -48,6 +49,20 @@ class ObjectStoreStorage(IStorage):
         self.storage_class = storage_class
         self.region_name = region_name
         self.public_url = public_url
+
+        # Packages that are uploaded (web or api) can be prefixed with a special upload_prefix.
+        # If this is not specified, upload_prefix will be set to the main bucket_prefix (which is optional).
+        # Packages pulled from the fallback index (if pypi.fallback==cache) will go into bucket_prefix.
+        # Ideally, if there is an upload_prefix, there should be a bucket_prefix so that packages are clearly distinct.
+        # I thought about forcing that here and creating a default non-empty bucket_prefix if there is an upload_prefix,
+        # to prevent the case of uploads going in a prefix/folder but cached packages going in the main bucket.
+        # However, it is ok as-is. Behavior is a bit odd in that a fresh reload from storage will load ALL of the
+        # packages from the bucket root including the upload "folder" at first. But then we search the upload_prefix
+        # second, and any packages that match will be uploaded a second time, with their origin reset from fallback to upload.
+        # It's a little odd and inefficient, but it does in fact work ok.
+        # Do make sure that if the upload_prefix is identical to bucket_prefix, that it is reverted to None as at
+        # that point there is no way to differentiate, and a reload will process every package twice!
+        self.upload_prefix = upload_prefix if upload_prefix != bucket_prefix else None
 
     def _generate_url(self, package: Package) -> str:
         """Subclasses must implement a method for generating signed URLs to
@@ -75,6 +90,7 @@ class ObjectStoreStorage(IStorage):
         kwargs = super(ObjectStoreStorage, cls).configure(settings)
         kwargs["expire_after"] = int(settings.get("storage.expire_after", 60 * 60 * 24))
         kwargs["bucket_prefix"] = settings.get("storage.prefix", "")
+        kwargs["upload_prefix"] = settings.get("storage.upload_prefix", "")
         kwargs["prepend_hash"] = asbool(settings.get("storage.prepend_hash", True))
         kwargs["object_acl"] = settings.get("storage.object_acl", None)
         kwargs["storage_class"] = storage_class = settings.get("storage.storage_class")
@@ -99,7 +115,7 @@ class ObjectStoreStorage(IStorage):
         """Get the fully-qualified bucket path for a package"""
         if "path" not in package.data:
             filename = self.calculate_path(package)
-            package.data["path"] = self.bucket_prefix + filename
+            package.data["path"] = (self.upload_prefix if self.upload_prefix and package.origin == "upload" else self.bucket_prefix) + filename
         return package.data["path"]
 
     def get_url(self, package):

@@ -76,7 +76,7 @@ def fetch_dist(request, url, name, version, summary, requires_python):
     # TODO: digest validation
     return (
         request.db.upload(
-            filename, BytesIO(data), name, version, summary, requires_python
+            filename, BytesIO(data), name, version, summary, requires_python, origin="fallback"
         ),
         data,
     )
@@ -151,6 +151,7 @@ def upload_package(context, request, content, summary=None, requires_python=None
             name=context.name,
             summary=summary,
             requires_python=requires_python,
+            origin="upload"
         )
     except ValueError as e:  # pragma: no cover
         return HTTPBadRequest(*e.args)

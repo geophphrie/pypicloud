@@ -172,7 +172,21 @@ class GoogleCloudStorage(ObjectStoreStorage):
         for blob in blobs:
             pkg = self.package_from_object(blob, factory)
             if pkg is not None:
+                # If we have a separate upload prefix, flag THIS package as being a fallback. Otherwise
+                # we don't know enough to differentiate.
+                pkg.origin = "fallback" if self.upload_prefix else None
                 yield pkg
+
+        # If we have an upload_prefix, now go back and process anything that matches.
+        if self.upload_prefix:
+            blobs = self.bucket.list_blobs(prefix=self.upload_prefix)
+            for blob in blobs:
+                pkg = self.package_from_object(blob, factory)
+                if pkg is not None:
+                    # If we have a separate upload prefix, flag THIS package as being a fallback. Otherwise
+                    # we don't know enough to differentiate.
+                    pkg.origin = "upload"
+                    yield pkg
 
     def _generate_url(self, package):
         """Generate a signed url to the GCS file"""

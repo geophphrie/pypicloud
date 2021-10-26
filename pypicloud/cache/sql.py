@@ -108,6 +108,7 @@ class SQLPackage(Package, Base):
     # TEXT, as pypi does the same, and using String(N) would mismatch with pypi
     summary = Column(Text(), nullable=True)
     data = Column(JSONEncodedDict(), nullable=False)
+    origin = Column(String(16, convert_unicode=True), nullable=True)
 
 
 def create_schema(engine):
@@ -260,7 +261,7 @@ class SQLCache(ICache):
             .subquery()
         )
         rows = self.db.query(
-            SQLPackage.name, SQLPackage.last_modified, SQLPackage.summary
+            SQLPackage.name, SQLPackage.last_modified, SQLPackage.summary, SQLPackage.origin
         ).filter(
             (SQLPackage.name == subquery.c.name)
             & (SQLPackage.last_modified == subquery.c.last_modified)
@@ -274,7 +275,7 @@ class SQLCache(ICache):
                 continue
             seen_packages.add(row[0])
             packages.append(
-                {"name": row[0], "last_modified": row[1], "summary": row[2]}
+                {"name": row[0], "last_modified": row[1], "summary": row[2], "origin": row[3]}
             )
         return packages
 
