@@ -20,7 +20,7 @@ LOG = logging.getLogger(__name__)
 def upload(
     request, content, name=None, version=None, summary=None, requires_python=None
 ):
-    """ Handle update commands """
+    """Handle update commands"""
     action = request.param(":action", "file_upload")
     # Direct uploads from the web UI go here, and don't have a name/version
     if name is None or version is None:
@@ -66,7 +66,7 @@ def search(request, criteria, query_type):
 )
 @addslash
 def simple(request):
-    """ Render the list of all unique package names """
+    """Render the list of all unique package names"""
     names = request.db.distinct()
     i = 0
     while i < len(names):
@@ -79,7 +79,7 @@ def simple(request):
 
 
 def _package_versions(context, request):
-    """ Render the links for all versions of a package """
+    """Render the links for all versions of a package"""
     fallback = request.registry.fallback
     if fallback == "redirect":
         if request.registry.always_show_upstream:
@@ -103,7 +103,7 @@ def _package_versions(context, request):
 )
 @addslash
 def package_versions(context, request):
-    """ Render the links for all versions of a package """
+    """Render the links for all versions of a package"""
     return _package_versions(context, request)
 
 
@@ -115,7 +115,7 @@ def package_versions(context, request):
     renderer="json",
 )
 def package_versions_json(context, request):
-    """ Render the package versions in JSON format """
+    """Render the package versions in JSON format"""
     pkgs = _package_versions(context, request)
     if not isinstance(pkgs, dict):
         return pkgs
@@ -152,7 +152,7 @@ def package_versions_json(context, request):
 
 
 def get_fallback_packages(request, package_name, redirect=True):
-    """ Get all package versions for a package from the fallback_base_url """
+    """Get all package versions for a package from the fallback_base_url"""
     releases = request.locator.get_releases(package_name)
     pkgs = {}
     if not request.access.has_permission(package_name, "fallback"):
@@ -172,7 +172,7 @@ def get_fallback_packages(request, package_name, redirect=True):
 
 
 def packages_to_dict(request, packages):
-    """ Convert a list of packages to a dict used by the template """
+    """Convert a list of packages to a dict used by the template"""
     pkgs = {}
     for package in packages:
         url = package.get_url(request)
@@ -192,7 +192,7 @@ def packages_to_dict(request, packages):
 
 
 def _pkg_response(pkgs):
-    """ Take a package mapping and return either a dict for jinja or a 404 """
+    """Take a package mapping and return either a dict for jinja or a 404"""
     if pkgs:
         return {"pkgs": pkgs}
     else:
@@ -200,7 +200,7 @@ def _pkg_response(pkgs):
 
 
 def _redirect(context, request):
-    """ Return a 302 to the fallback url for this package """
+    """Return a 302 to the fallback url for this package"""
     if request.registry.fallback_base_url:
         path = request.path.lstrip("/")
         redirect_url = "%s/%s" % (request.registry.fallback_base_url.rstrip("/"), path)
@@ -214,12 +214,12 @@ def _redirect(context, request):
 
 
 def _simple_redirect(context, request):
-    """ Service /simple with fallback=redirect """
+    """Service /simple with fallback=redirect"""
     normalized_name = normalize_name(context.name)
     packages = request.db.all(normalized_name)
     if packages:
         if not request.access.has_permission(normalized_name, "read"):
-            if request.is_logged_in:
+            if request.is_authenticated:
                 return _redirect(context, request)
             else:
                 return request.request_login()
@@ -230,12 +230,12 @@ def _simple_redirect(context, request):
 
 
 def _simple_redirect_always_show(context, request):
-    """ Service /simple with fallback=redirect """
+    """Service /simple with fallback=redirect"""
     normalized_name = normalize_name(context.name)
     packages = request.db.all(normalized_name)
     if packages:
         if not request.access.has_permission(normalized_name, "read"):
-            if request.is_logged_in:
+            if request.is_authenticated:
                 return _redirect(context, request)
             else:
                 return request.request_login()
@@ -251,11 +251,11 @@ def _simple_redirect_always_show(context, request):
 
 
 def _simple_cache(context, request):
-    """ Service /simple with fallback=cache """
+    """Service /simple with fallback=cache"""
     normalized_name = normalize_name(context.name)
 
     if not request.access.has_permission(normalized_name, "read"):
-        if request.is_logged_in:
+        if request.is_authenticated:
             return HTTPNotFound("No packages found named %r" % normalized_name)
         else:
             return request.request_login()
@@ -265,7 +265,7 @@ def _simple_cache(context, request):
         return _pkg_response(packages_to_dict(request, packages))
 
     if not request.access.can_update_cache():
-        if request.is_logged_in:
+        if request.is_authenticated:
             return HTTPNotFound("No packages found named %r" % normalized_name)
         else:
             return request.request_login()
@@ -275,11 +275,11 @@ def _simple_cache(context, request):
 
 
 def _simple_cache_always_show(context, request):
-    """ Service /simple with fallback=mirror """
+    """Service /simple with fallback=mirror"""
     normalized_name = normalize_name(context.name)
 
     if not request.access.has_permission(normalized_name, "read"):
-        if request.is_logged_in:
+        if request.is_authenticated:
             return _redirect(context, request)
         else:
             return request.request_login()
@@ -287,7 +287,7 @@ def _simple_cache_always_show(context, request):
     packages = request.db.all(normalized_name)
     if packages:
         if not request.access.can_update_cache():
-            if request.is_logged_in:
+            if request.is_authenticated:
                 pkgs = get_fallback_packages(request, context.name)
                 stored_pkgs = packages_to_dict(request, packages)
                 # Overwrite existing package urls
@@ -305,7 +305,7 @@ def _simple_cache_always_show(context, request):
             return _pkg_response(pkgs)
     else:
         if not request.access.can_update_cache():
-            if request.is_logged_in:
+            if request.is_authenticated:
                 return _redirect(context, request)
             else:
                 return request.request_login()
@@ -315,11 +315,11 @@ def _simple_cache_always_show(context, request):
 
 
 def _simple_serve(context, request):
-    """ Service /simple with fallback=none """
+    """Service /simple with fallback=none"""
     normalized_name = normalize_name(context.name)
 
     if not request.access.has_permission(normalized_name, "read"):
-        if request.is_logged_in:
+        if request.is_authenticated:
             return HTTPNotFound("No packages found named %r" % normalized_name)
         else:
             return request.request_login()

@@ -13,18 +13,18 @@ from pyramid_beaker import session_factory_from_settings
 from .locator import FormattedScrapingLocator, SimpleJsonLocator
 from .route import Root
 
-__version__ = "1.1.7+ambition"
+__version__ = "1.2.4+ambition"
 
 LOG = logging.getLogger(__name__)
 
 
 def to_json(value):
-    """ A json filter for jinja2 """
+    """A json filter for jinja2"""
     return render("json", value)
 
 
 def _app_url(request, *paths, fragment="", **params):
-    """ Get the base url for the root of the app plus an optional path """
+    """Get the base url for the root of the app plus an optional path"""
     path = "/".join(paths)
     if not path.startswith("/"):
         path = "/" + path
@@ -36,7 +36,7 @@ def _app_url(request, *paths, fragment="", **params):
 
 
 def _fallback_simple(request):
-    """ /simple endpoint of the fallback url """
+    """/simple endpoint of the fallback url"""
     if request.registry.fallback_url is not None:
         return request.registry.fallback_url
     else:
@@ -44,12 +44,12 @@ def _fallback_simple(request):
 
 
 def _add_postfork_hook(config, hook):
-    """ Add a postfork hook """
+    """Add a postfork hook"""
     config.registry.postfork_hooks.append(hook)
 
 
 def includeme(config):
-    """ Set up and configure the pypicloud app """
+    """Set up and configure the pypicloud app"""
     config.set_root_factory(Root)
     settings = config.get_settings()
     config.add_route("health", "/health")
@@ -74,7 +74,7 @@ def includeme(config):
 
         @postfork
         def run_postfork_hooks():
-            """ Run hooks after uWSGI forks """
+            """Run hooks after uWSGI forks"""
             for fn in config.registry.postfork_hooks:
                 fn()
 

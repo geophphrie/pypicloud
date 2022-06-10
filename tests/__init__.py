@@ -6,13 +6,10 @@ from collections import defaultdict
 from mock import MagicMock
 from pyramid.testing import DummyRequest
 
-from pypicloud.auth import _is_logged_in
 from pypicloud.cache import ICache
 from pypicloud.dateutil import utcnow
 from pypicloud.models import Package
 from pypicloud.storage import IStorage
-
-unittest.TestCase.assertItemsEqual = unittest.TestCase.assertCountEqual
 
 
 os.environ["AWS_SECRET_ACCESS_KEY"] = "access_key"
@@ -28,7 +25,7 @@ def make_package(
     factory=Package,
     **kwargs
 ):
-    """ Convenience method for constructing a package """
+    """Convenience method for constructing a package"""
     filename = filename or "%s-%s.tar.gz" % (name, version)
     return factory(
         name, version, filename, last_modified or utcnow(), summary, **kwargs
@@ -56,14 +53,14 @@ def make_dist(
 
 class DummyStorage(IStorage):
 
-    """ In-memory implementation of IStorage """
+    """In-memory implementation of IStorage"""
 
     def __init__(self, request=None):
         super(DummyStorage, self).__init__(request)
         self.packages = {}
 
     def list(self, factory=Package):
-        """ Return a list or generator of all packages """
+        """Return a list or generator of all packages"""
         for args in self.packages.values():
             yield args[0]
 
@@ -82,7 +79,7 @@ class DummyStorage(IStorage):
 
 class DummyCache(ICache):
 
-    """ In-memory implementation of ICache """
+    """In-memory implementation of ICache"""
 
     def __init__(self, request=None, **kwargs):
         kwargs.setdefault("storage", DummyStorage)
@@ -90,41 +87,37 @@ class DummyCache(ICache):
         self.packages = defaultdict(dict)
 
     def fetch(self, filename):
-        """ Override this method to implement 'fetch' """
+        """Override this method to implement 'fetch'"""
         return self.packages.get(filename)
 
     def all(self, name):
-        """ Override this method to implement 'all' """
+        """Override this method to implement 'all'"""
         return [p for p in self.packages.values() if p.name == name]
 
     def distinct(self):
-        """ Get all distinct package names """
+        """Get all distinct package names"""
         return list(set((p.name for p in self.packages.values())))
 
     def clear(self, package):
-        """ Remove this package from the caching database """
+        """Remove this package from the caching database"""
         del self.packages[package.filename]
 
     def clear_all(self):
-        """ Clear all cached packages from the database """
+        """Clear all cached packages from the database"""
         self.packages.clear()
 
     def save(self, package):
-        """ Save this package to the database """
+        """Save this package to the database"""
         self.packages[package.filename] = package
 
 
 class MockServerTest(unittest.TestCase):
 
-    """ Base class for tests that need in-memory ICache objects """
+    """Base class for tests that need in-memory ICache objects"""
 
     def setUp(self):
-        self.request = DummyRequest()
-        self.request.registry = MagicMock()
-        self.request.userid = None
-        self.request.__class__.is_logged_in = property(_is_logged_in)
+        self.request = DummyRequest(registry=MagicMock(), forbid=MagicMock())
         self.db = self.request.db = DummyCache(self.request)
         self.request.path_url = "/path/"
-        self.request.forbid = MagicMock()
         self.params = {}
         self.request.param = lambda x, y=None: self.params.get(x, y)

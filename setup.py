@@ -11,6 +11,7 @@ CHANGES = open(os.path.join(HERE, "CHANGES.rst")).read()
 CHANGES = re.sub(r"\(\s*:(issue|pr|sha):.*?\)", "", CHANGES)
 CHANGES = re.sub(r":ref:`(.*?) <.*>`", r"\1", CHANGES)
 
+REQUIREMENTS_TEST = open(os.path.join(HERE, "requirements_test.txt")).readlines()
 REQUIREMENTS = [
     "boto3>=1.7.0",
     # beaker needs this
@@ -18,9 +19,9 @@ REQUIREMENTS = [
     "distlib",
     "paste",
     "passlib>=1.7",
-    "pyramid",
+    "pyramid>=2",
     "pyramid_beaker",
-    "pyramid_duh>=0.1.1",
+    "pyramid_duh",
     "pyramid_jinja2",
     "pyramid_rpc",
     "pyramid_tm",
@@ -39,43 +40,21 @@ EXTRAS = {
 
 EXTRAS["all_plugins"] = sum(EXTRAS.values(), [])
 
-EXTRAS["test"] = EXTRAS["all_plugins"] + [
-    "mock",
-    "mockldap",
-    "moto",
-    "mysqlclient",
-    "nose",
-    "psycopg2-binary",
-    "requests",
-    "webtest",
-    "vcrpy",
-]
-
 EXTRAS["server"] = ["waitress"]
-EXTRAS["lint"] = [
-    "docutils",
-    "black",
-    "pylint==2.3.1",
-    "mypy",
-    "sqlalchemy-stubs",
-    "isort>=4.2.5,<5",
-]
-EXTRAS["doc"] = ["numpydoc", "sphinx", "sphinx_rtd_theme"]
 
 
 if __name__ == "__main__":
     setup(
         name="pypicloud",
-        version="1.1.7+ambition",
+        version="1.2.4+ambition",
         description="Private PyPI backed by S3",
         long_description=README + "\n\n" + CHANGES,
         classifiers=[
             "Programming Language :: Python",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.5",
-            "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
             "Development Status :: 4 - Beta",
             "Framework :: Pyramid",
             "Intended Audience :: System Administrators",
@@ -91,7 +70,7 @@ if __name__ == "__main__":
         keywords="pypi s3 cheeseshop package",
         platforms="any",
         zip_safe=False,
-        python_requires=">=3.5",
+        python_requires=">=3.7",
         include_package_data=True,
         packages=find_packages(exclude=("tests",)),
         entry_points={
@@ -109,7 +88,7 @@ if __name__ == "__main__":
             "paste.app_factory": ["main = pypicloud:main"],
         },
         install_requires=REQUIREMENTS,
-        tests_require=REQUIREMENTS + EXTRAS["test"],
+        tests_require=REQUIREMENTS + REQUIREMENTS_TEST,
         test_suite="tests",
         extras_require=EXTRAS,
     )

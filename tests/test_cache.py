@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """ Tests for database cache implementations """
 import calendar
+import os
 import unittest
 from io import BytesIO
 
@@ -18,28 +19,31 @@ from pypicloud.cache.sql import SQLPackage
 from pypicloud.storage import IStorage
 
 from . import DummyCache, DummyStorage, make_package
+from .db_utils import get_mysql_url, get_postgres_url, get_sqlite_url
+
+# pylint: disable=W0707
 
 
 class TestBaseCache(unittest.TestCase):
 
-    """ Tests for the caching base class """
+    """Tests for the caching base class"""
 
     def test_equality(self):
-        """ Two packages with same filename should be equal """
+        """Two packages with same filename should be equal"""
         p1 = make_package(filename="foo")
         p2 = make_package(filename="foo")
         self.assertEqual(hash(p1), hash(p2))
         self.assertEqual(p1, p2)
 
     def test_not_equal(self):
-        """ Two packages with different filenames should not be equal """
+        """Two packages with different filenames should not be equal"""
         p1 = make_package(filename="foobar")
         p2 = make_package(filename="foo")
         self.assertNotEqual(hash(p1), hash(p2))
         self.assertNotEqual(p1, p2)
 
     def test_upload_hash_generation(self):
-        """ Uploading a package generates SHA256 and MD5 hashes """
+        """Uploading a package generates SHA256 and MD5 hashes"""
         cache = DummyCache()
         pkg = cache.upload("a-1.tar.gz", BytesIO(b"test1234"), "a")
         self.assertEqual(
@@ -49,7 +53,7 @@ class TestBaseCache(unittest.TestCase):
         self.assertEqual(pkg.data["hash_md5"], "16d7a4fca7442dda3ad93c9a726597e4")
 
     def test_upload_overwrite(self):
-        """ Uploading a preexisting packages overwrites current package """
+        """Uploading a preexisting packages overwrites current package"""
         cache = DummyCache()
         cache.allow_overwrite = True
         name, filename, content = "a", "a-1.tar.gz", BytesIO(b"new")
@@ -65,7 +69,7 @@ class TestBaseCache(unittest.TestCase):
         self.assertEqual(len(stored_pkgs), 1)
 
     def test_upload_no_overwrite(self):
-        """ If allow_overwrite=False duplicate package throws exception """
+        """If allow_overwrite=False duplicate package throws exception"""
         cache = DummyCache()
         cache.allow_overwrite = False
         name, version, filename = "a", "1", "a-1.tar.gz"
@@ -74,7 +78,7 @@ class TestBaseCache(unittest.TestCase):
             cache.upload(filename, BytesIO(b"test1234"), name, version)
 
     def test_no_delete(self):
-        """ If allow_delete=False, packages cannot be deleted"""
+        """If allow_delete=False, packages cannot be deleted"""
         cache = DummyCache()
         cache.allow_delete = False
         pkg = make_package()
@@ -82,7 +86,7 @@ class TestBaseCache(unittest.TestCase):
             cache.delete(pkg)
 
     def test_multiple_packages_same_version(self):
-        """ Can upload multiple packages that have the same version """
+        """Can upload multiple packages that have the same version"""
         cache = DummyCache()
         cache.allow_overwrite = False
         name, version = "a", "1"
@@ -97,13 +101,13 @@ class TestBaseCache(unittest.TestCase):
         self.assertEqual(len(stored_pkgs), 2)
 
     def test_configure_storage(self):
-        """ Calling configure() sets up storage backend """
+        """Calling configure() sets up storage backend"""
         settings = {"pypi.storage": "tests.DummyStorage"}
         kwargs = ICache.configure(settings)
         self.assertTrue(isinstance(kwargs["storage"](), DummyStorage))
 
     def test_summary(self):
-        """ summary constructs per-package metadata summary """
+        """summary constructs per-package metadata summary"""
         cache = DummyCache()
         cache.upload("pkg1-0.3.tar.gz", BytesIO(b"test1234"))
         cache.upload("pkg1-1.1.tar.gz", BytesIO(b"test1234"))
@@ -114,7 +118,7 @@ class TestBaseCache(unittest.TestCase):
             "pkg2.tar.gz", BytesIO(b"test1234"), "pkg2", "0.1dev2", "summary"
         )
         summaries = cache.summary()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             summaries,
             [
                 {
@@ -131,14 +135,14 @@ class TestBaseCache(unittest.TestCase):
         )
 
     def test_reload_if_needed(self):
-        """ Reload the cache if it's empty """
+        """Reload the cache if it's empty"""
         cache = DummyCache()
         cache.reload_from_storage = MagicMock()
         cache.reload_if_needed()
         self.assertTrue(cache.reload_from_storage.called)
 
     def test_no_reload_if_needed(self):
-        """ Don't reload the cache if it's not necessary """
+        """Don't reload the cache if it's not necessary"""
         cache = DummyCache()
         cache.reload_from_storage = MagicMock()
         cache.distinct = MagicMock()
@@ -147,7 +151,7 @@ class TestBaseCache(unittest.TestCase):
         self.assertFalse(cache.reload_from_storage.called)
 
     def test_abstract_methods(self):
-        """ Abstract methods raise exception """
+        """Abstract methods raise exception"""
         settings = {"pypi.storage": "tests.DummyStorage"}
         kwargs = ICache.configure(settings)
         cache = ICache(**kwargs)
@@ -165,7 +169,7 @@ class TestBaseCache(unittest.TestCase):
             cache.save(make_package())
 
     def test_check_health(self):
-        """ Base check_health returns True """
+        """Base check_health returns True"""
         cache = DummyCache()
         ok, msg = cache.check_health()
         self.assertTrue(ok)
@@ -173,18 +177,21 @@ class TestBaseCache(unittest.TestCase):
 
 class TestSQLiteCache(unittest.TestCase):
 
-    """ Tests for the SQLAlchemy cache """
+    """Tests for the SQLAlchemy cache"""
 
-    DB_URL = "sqlite://"
+    @classmethod
+    def get_db_url(cls) -> str:
+        return get_sqlite_url()
 
     @classmethod
     def setUpClass(cls):
         super(TestSQLiteCache, cls).setUpClass()
-        settings = {"pypi.storage": "tests.DummyStorage", "db.url": cls.DB_URL}
+        db_url = cls.get_db_url()
+        settings = {"pypi.storage": "tests.DummyStorage", "db.url": db_url}
         try:
             cls.kwargs = SQLCache.configure(settings)
         except OperationalError:
-            raise unittest.SkipTest("Couldn't connect to database")
+            raise unittest.SkipTest(f"Couldn't connect to database {db_url}")
 
     def setUp(self):
         super(TestSQLiteCache, self).setUp()
@@ -203,7 +210,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.request._process_finished_callbacks()
 
     def test_upload(self):
-        """ upload() saves package and uploads to storage """
+        """upload() saves package and uploads to storage"""
         pkg = make_package(factory=SQLPackage)
         content = BytesIO(b"test1234")
         self.db.upload(pkg.filename, content, pkg.name, pkg.version)
@@ -216,7 +223,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.storage.upload.assert_called_with(pkg, ANY)
 
     def test_upload_overwrite(self):
-        """ Uploading a preexisting packages overwrites current package """
+        """Uploading a preexisting packages overwrites current package"""
         self.db.allow_overwrite = True
         name, filename = "a", "a-1.tar.gz"
         self.db.upload(filename, BytesIO(b"old"), name)
@@ -226,7 +233,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.assertEqual(len(all_versions), 1)
 
     def test_save(self):
-        """ save() puts object into database """
+        """save() puts object into database"""
         pkg = make_package(factory=SQLPackage)
         self.db.save(pkg)
         count = self.sql.query(SQLPackage).count()
@@ -235,7 +242,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.assertEqual(saved_pkg, pkg)
 
     def test_save_unicode(self):
-        """ save() can store packages with unicode in the names """
+        """save() can store packages with unicode in the names"""
         pkg = make_package("mypackage™", factory=SQLPackage)
         self.db.save(pkg)
         count = self.sql.query(SQLPackage).count()
@@ -244,7 +251,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.assertEqual(saved_pkg, pkg)
 
     def test_delete(self):
-        """ delete() removes object from database and deletes from storage """
+        """delete() removes object from database and deletes from storage"""
         pkg = make_package(factory=SQLPackage)
         self.sql.add(pkg)
         transaction.commit()
@@ -255,7 +262,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.storage.delete.assert_called_with(pkg)
 
     def test_clear(self):
-        """ clear() removes object from database """
+        """clear() removes object from database"""
         pkg = make_package(factory=SQLPackage)
         self.sql.add(pkg)
         transaction.commit()
@@ -265,7 +272,7 @@ class TestSQLiteCache(unittest.TestCase):
         self.assertEqual(count, 0)
 
     def test_reload(self):
-        """ reload_from_storage() inserts packages into the database """
+        """reload_from_storage() inserts packages into the database"""
         keys = [
             make_package(factory=SQLPackage),
             make_package(
@@ -280,22 +287,22 @@ class TestSQLiteCache(unittest.TestCase):
         self.storage.list.return_value = keys
         self.db.reload_from_storage()
         all_pkgs = self.sql.query(SQLPackage).all()
-        self.assertItemsEqual(all_pkgs, keys)
+        self.assertCountEqual(all_pkgs, keys)
 
     def test_fetch(self):
-        """ fetch() retrieves a package from the database """
+        """fetch() retrieves a package from the database"""
         pkg = make_package(factory=SQLPackage)
         self.sql.add(pkg)
         saved_pkg = self.db.fetch(pkg.filename)
         self.assertEqual(saved_pkg, pkg)
 
     def test_fetch_missing(self):
-        """ fetch() returns None if no package exists """
+        """fetch() returns None if no package exists"""
         saved_pkg = self.db.fetch("missing_pkg-1.2.tar.gz")
         self.assertIsNone(saved_pkg)
 
     def test_all_versions(self):
-        """ all() returns all versions of a package """
+        """all() returns all versions of a package"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(version="1.3", filename="mypath3", factory=SQLPackage),
@@ -303,10 +310,10 @@ class TestSQLiteCache(unittest.TestCase):
         ]
         self.sql.add_all(pkgs)
         saved_pkgs = self.db.all("mypkg")
-        self.assertItemsEqual(saved_pkgs, pkgs[:2])
+        self.assertCountEqual(saved_pkgs, pkgs[:2])
 
     def test_distinct(self):
-        """ distinct() returns all unique package names """
+        """distinct() returns all unique package names"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(version="1.3", filename="mypath3", factory=SQLPackage),
@@ -314,10 +321,10 @@ class TestSQLiteCache(unittest.TestCase):
         ]
         self.sql.add_all(pkgs)
         saved_pkgs = self.db.distinct()
-        self.assertItemsEqual(saved_pkgs, set([p.name for p in pkgs]))
+        self.assertCountEqual(saved_pkgs, set([p.name for p in pkgs]))
 
     def test_search_or(self):
-        """ search() returns packages that match the query """
+        """search() returns packages that match the query"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(
@@ -333,10 +340,10 @@ class TestSQLiteCache(unittest.TestCase):
         self.sql.add_all(pkgs)
         criteria = {"name": ["mypkg"], "summary": ["mypkg"]}
         packages = self.db.search(criteria, "or")
-        self.assertItemsEqual(packages, pkgs[:-1])
+        self.assertCountEqual(packages, pkgs[:-1])
 
     def test_search_and(self):
-        """ search() returns packages that match the query """
+        """search() returns packages that match the query"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(
@@ -352,16 +359,16 @@ class TestSQLiteCache(unittest.TestCase):
         self.sql.add_all(pkgs)
         criteria = {"name": ["my", "pkg"], "summary": ["this", "mypkg"]}
         packages = self.db.search(criteria, "and")
-        self.assertItemsEqual(packages, pkgs[:-1])
+        self.assertCountEqual(packages, pkgs[:-1])
 
     def test_summary(self):
-        """ summary constructs per-package metadata summary """
+        """summary constructs per-package metadata summary"""
         self.db.upload("pkg1-0.3.tar.gz", BytesIO(b"test1234"), "pkg1", "0.3")
         self.db.upload("pkg1-1.1.tar.gz", BytesIO(b"test1234"), "pkg1", "1.1")
         p1 = self.db.upload("pkg1a2.tar.gz", BytesIO(b"test1234"), "pkg1", "1.1.1a2")
         p2 = self.db.upload("pkg2.tar.gz", BytesIO(b"test1234"), "pkg2", "0.1dev2")
         s1, s2 = self.db.summary()  # pylint: disable=E0632
-        # Order them correctly. assertItemsEqual isn't playing nice in py2.6
+        # Order them correctly. assertCountEqual isn't playing nice in py2.6
         if s1["name"] == "pkg2":
             s1, s2 = s2, s1
         # last_modified may be rounded when stored in MySQL,
@@ -378,7 +385,7 @@ class TestSQLiteCache(unittest.TestCase):
         )
 
     def test_multiple_packages_same_version(self):
-        """ Can upload multiple packages that have the same version """
+        """Can upload multiple packages that have the same version"""
         with patch.object(self.db, "allow_overwrite", False):
             name, version = "a", "1"
             path1 = "old_package_path-1.tar.gz"
@@ -390,7 +397,7 @@ class TestSQLiteCache(unittest.TestCase):
             self.assertEqual(len(all_versions), 2)
 
     def test_reload_if_needed(self):
-        """ Reload the cache if it's empty """
+        """Reload the cache if it's empty"""
         self.db.storage = MagicMock()
         self.db.storage.list.return_value = [make_package(factory=SQLPackage)]
         self.db.reload_if_needed()
@@ -398,16 +405,16 @@ class TestSQLiteCache(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_check_health_success(self):
-        """ check_health returns True for good connection """
+        """check_health returns True for good connection"""
         ok, msg = self.db.check_health()
         self.assertTrue(ok)
 
     def test_check_health_fail(self):
-        """ check_health returns False for bad connection """
+        """check_health returns False for bad connection"""
         dbmock = self.db.db = MagicMock()
 
         def throw(*_, **__):
-            """ Throw an exception """
+            """Throw an exception"""
             raise SQLAlchemyError("DB exception")
 
         dbmock.query.side_effect = throw
@@ -416,31 +423,38 @@ class TestSQLiteCache(unittest.TestCase):
 
 
 class TestMySQLCache(TestSQLiteCache):
-    """ Test the SQLAlchemy cache on a MySQL DB """
+    """Test the SQLAlchemy cache on a MySQL DB"""
 
-    DB_URL = "mysql://root@127.0.0.1:3306/test?charset=utf8mb4"
+    @classmethod
+    def get_db_url(cls) -> str:
+        return get_mysql_url()
 
 
 class TestPostgresCache(TestSQLiteCache):
-    """ Test the SQLAlchemy cache on a Postgres DB """
+    """Test the SQLAlchemy cache on a Postgres DB"""
 
-    DB_URL = "postgresql://postgres@127.0.0.1:5432/postgres"
+    @classmethod
+    def get_db_url(cls) -> str:
+        return get_postgres_url()
 
 
 class TestRedisCache(unittest.TestCase):
 
-    """ Tests for the redis cache """
+    """Tests for the redis cache"""
 
     @classmethod
     def setUpClass(cls):
         super(TestRedisCache, cls).setUpClass()
-        settings = {"pypi.storage": "tests.DummyStorage", "db.url": "redis://localhost"}
+        redis_host = os.environ.get("REDIS_HOST", "localhost")
+        redis_port = os.environ.get("REDIS_PORT", "6379")
+        redis_url = f"redis://{redis_host}:{redis_port}"
+        settings = {"pypi.storage": "tests.DummyStorage", "db.url": redis_url}
         cls.kwargs = RedisCache.configure(settings)
         cls.redis = cls.kwargs["db"]
         try:
             cls.redis.flushdb()
         except redis.exceptions.ConnectionError:
-            msg = "Redis not found on port 6379"
+            msg = f"Redis not found at {redis_url}"
             setattr(cls, "setUp", lambda cls: unittest.TestCase.skipTest(cls, msg))
 
     def setUp(self):
@@ -453,7 +467,7 @@ class TestRedisCache(unittest.TestCase):
         self.redis.flushdb()
 
     def assert_in_redis(self, pkg):
-        """ Assert that a package exists in redis """
+        """Assert that a package exists in redis"""
         self.assertTrue(self.redis.sismember(self.db.redis_set, pkg.name))
         data = self.redis.hgetall(self.db.redis_key(pkg.filename))
         dt = pkg.last_modified
@@ -471,7 +485,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertEqual(data, pkg_data)
 
     def test_load(self):
-        """ Loading from redis deserializes all fields """
+        """Loading from redis deserializes all fields"""
         kwargs = {"url": "my.url", "expire": 7237}
         pkg = make_package(**kwargs)
         # Due to some rounding weirdness in old Py3 versions, we need to remove
@@ -489,7 +503,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertEqual(loaded.data, kwargs)
 
     def test_delete(self):
-        """ delete() removes object from database and deletes from storage """
+        """delete() removes object from database and deletes from storage"""
         pkg = make_package()
         key = self.db.redis_key(pkg.filename)
         self.redis[key] = "foobar"
@@ -501,7 +515,7 @@ class TestRedisCache(unittest.TestCase):
         self.storage.delete.assert_called_with(pkg)
 
     def test_clear(self):
-        """ clear() removes object from database """
+        """clear() removes object from database"""
         pkg = make_package()
         key = self.db.redis_key(pkg.filename)
         self.redis[key] = "foobar"
@@ -512,7 +526,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertEqual(count, 0)
 
     def test_clear_leave_distinct(self):
-        """ clear() doesn't remove package from list of distinct """
+        """clear() doesn't remove package from list of distinct"""
         p1 = make_package()
         p2 = make_package(filename="another-1.2.tar.gz")
         self.db.save(p1)
@@ -525,7 +539,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertEqual(count, 1)
 
     def test_clear_all(self):
-        """ clear_all() removes all packages from db """
+        """clear_all() removes all packages from db"""
         p1 = make_package()
         p2 = make_package(version="1.2")
         self.db.save(p1)
@@ -538,7 +552,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertEqual(count, 0)
 
     def test_reload(self):
-        """ reload_from_storage() inserts packages into the database """
+        """reload_from_storage() inserts packages into the database"""
         keys = [
             make_package(factory=SQLPackage),
             make_package("mypkg2", "1.3.4", "my/other/path", factory=SQLPackage),
@@ -549,19 +563,19 @@ class TestRedisCache(unittest.TestCase):
             self.assert_in_redis(pkg)
 
     def test_fetch(self):
-        """ fetch() retrieves a package from the database """
+        """fetch() retrieves a package from the database"""
         pkg = make_package()
         self.db.save(pkg)
         saved_pkg = self.db.fetch(pkg.filename)
         self.assertEqual(saved_pkg, pkg)
 
     def test_fetch_missing(self):
-        """ fetch() returns None if no package exists """
+        """fetch() returns None if no package exists"""
         saved_pkg = self.db.fetch("missing_pkg-1.2.tar.gz")
         self.assertIsNone(saved_pkg)
 
     def test_all_versions(self):
-        """ all() returns all versions of a package """
+        """all() returns all versions of a package"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(version="1.3", filename="mypath3", factory=SQLPackage),
@@ -570,10 +584,10 @@ class TestRedisCache(unittest.TestCase):
         for pkg in pkgs:
             self.db.save(pkg)
         saved_pkgs = self.db.all("mypkg")
-        self.assertItemsEqual(saved_pkgs, pkgs[:2])
+        self.assertCountEqual(saved_pkgs, pkgs[:2])
 
     def test_distinct(self):
-        """ distinct() returns all unique package names """
+        """distinct() returns all unique package names"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(version="1.3", filename="mypath3", factory=SQLPackage),
@@ -583,10 +597,10 @@ class TestRedisCache(unittest.TestCase):
             self.db.save(pkg)
         saved_pkgs = self.db.distinct()
 
-        self.assertItemsEqual(saved_pkgs, set([p.name for p in pkgs]))
+        self.assertCountEqual(saved_pkgs, set([p.name for p in pkgs]))
 
     def test_delete_package(self):
-        """ Deleting the last package of a name removes from distinct() """
+        """Deleting the last package of a name removes from distinct()"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package("mypkg2", "1.3.4", "my/other/path", factory=SQLPackage),
@@ -600,7 +614,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertEqual(len(summaries), 1)
 
     def test_search_or(self):
-        """ search() returns packages that match the query """
+        """search() returns packages that match the query"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(
@@ -617,10 +631,10 @@ class TestRedisCache(unittest.TestCase):
             self.db.save(pkg)
         criteria = {"name": ["mypkg"], "summary": ["mypkg"]}
         packages = self.db.search(criteria, "or")
-        self.assertItemsEqual(packages, pkgs[:-1])
+        self.assertCountEqual(packages, pkgs[:-1])
 
     def test_search_and(self):
-        """ search() returns packages that match the query """
+        """search() returns packages that match the query"""
         pkgs = [
             make_package(factory=SQLPackage),
             make_package(
@@ -637,10 +651,10 @@ class TestRedisCache(unittest.TestCase):
             self.db.save(pkg)
         criteria = {"name": ["my", "pkg"], "summary": ["this", "mypkg"]}
         packages = self.db.search(criteria, "and")
-        self.assertItemsEqual(packages, pkgs[:-1])
+        self.assertCountEqual(packages, pkgs[:-1])
 
     def test_multiple_packages_same_version(self):
-        """ Can upload multiple packages that have the same version """
+        """Can upload multiple packages that have the same version"""
         with patch.object(self.db, "allow_overwrite", False):
             name, version = "a", "1"
             path1 = "old_package_path-1.tar.gz"
@@ -652,7 +666,7 @@ class TestRedisCache(unittest.TestCase):
             self.assertEqual(len(all_versions), 2)
 
     def test_summary(self):
-        """ summary constructs per-package metadata summary """
+        """summary constructs per-package metadata summary"""
         self.db.upload("pkg1-0.3a2.tar.gz", BytesIO(b"test1234"), "pkg1", "0.3a2")
         self.db.upload("pkg1-1.1.tar.gz", BytesIO(b"test1234"), "pkg1", "1.1")
         p1 = self.db.upload(
@@ -662,7 +676,7 @@ class TestRedisCache(unittest.TestCase):
             "pkg2.tar.gz", BytesIO(b"test1234"), "pkg2", "0.1dev2", "summary"
         )
         summaries = self.db.summary()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             summaries,
             [
                 {"name": "pkg1", "summary": "summary", "last_modified": ANY},
@@ -680,16 +694,16 @@ class TestRedisCache(unittest.TestCase):
         )
 
     def test_check_health_success(self):
-        """ check_health returns True for good connection """
+        """check_health returns True for good connection"""
         ok, msg = self.db.check_health()
         self.assertTrue(ok)
 
     def test_check_health_fail(self):
-        """ check_health returns False for bad connection """
+        """check_health returns False for bad connection"""
         dbmock = self.db.db = MagicMock()
 
         def throw(*_, **__):
-            """ Throw an exception """
+            """Throw an exception"""
             raise redis.RedisError("DB exception")
 
         dbmock.echo.side_effect = throw
@@ -697,7 +711,7 @@ class TestRedisCache(unittest.TestCase):
         self.assertFalse(ok)
 
     def test_reload_none_summary(self):
-        """ reload_from_storage() doesn't break on packages with None summary """
+        """reload_from_storage() doesn't break on packages with None summary"""
         pkg = make_package(
             "mypkg3", "1.2", "some/other/path", summary=None, factory=SQLPackage
         )
@@ -711,7 +725,7 @@ class TestRedisCache(unittest.TestCase):
 
 class TestDynamoCache(unittest.TestCase):
 
-    """ Tests for the DynamoCache """
+    """Tests for the DynamoCache"""
 
     dynamo = None
 
@@ -748,14 +762,14 @@ class TestDynamoCache(unittest.TestCase):
             self.engine.scan(model).delete()
 
     def _save_pkgs(self, *pkgs):
-        """ Save a DynamoPackage to the db """
+        """Save a DynamoPackage to the db"""
         for pkg in pkgs:
             self.engine.save(pkg)
             summary = PackageSummary(pkg)
             self.engine.save(summary, overwrite=True)
 
     def test_upload(self):
-        """ upload() saves package and uploads to storage """
+        """upload() saves package and uploads to storage"""
         pkg = make_package(factory=DynamoPackage)
         self.db.upload(pkg.filename, BytesIO(b"test1234"), pkg.name, pkg.version)
         count = self.engine.scan(DynamoPackage).count()
@@ -765,7 +779,7 @@ class TestDynamoCache(unittest.TestCase):
         self.storage.upload.assert_called_with(pkg, ANY)
 
     def test_save(self):
-        """ save() puts object into database """
+        """save() puts object into database"""
         pkg = make_package(factory=DynamoPackage)
         self.db.save(pkg)
         count = self.engine.scan(DynamoPackage).count()
@@ -774,7 +788,7 @@ class TestDynamoCache(unittest.TestCase):
         self.assertEqual(saved_pkg, pkg)
 
     def test_delete(self):
-        """ delete() removes object from database and deletes from storage """
+        """delete() removes object from database and deletes from storage"""
         pkg = make_package(factory=DynamoPackage)
         self._save_pkgs(pkg)
         self.db.delete(pkg)
@@ -785,7 +799,7 @@ class TestDynamoCache(unittest.TestCase):
         self.storage.delete.assert_called_with(pkg)
 
     def test_clear(self):
-        """ clear() removes object from database """
+        """clear() removes object from database"""
         pkg = make_package(factory=DynamoPackage)
         self._save_pkgs(pkg)
         self.db.delete(pkg)
@@ -795,7 +809,7 @@ class TestDynamoCache(unittest.TestCase):
         self.assertEqual(count, 0)
 
     def test_reload(self):
-        """ reload_from_storage() inserts packages into the database """
+        """reload_from_storage() inserts packages into the database"""
         keys = [
             make_package(factory=DynamoPackage),
             make_package("mypkg2", "1.3.4", "my/other/path", factory=DynamoPackage),
@@ -803,22 +817,22 @@ class TestDynamoCache(unittest.TestCase):
         self.storage.list.return_value = keys
         self.db.reload_from_storage()
         all_pkgs = self.engine.scan(DynamoPackage).all()
-        self.assertItemsEqual(all_pkgs, keys)
+        self.assertCountEqual(all_pkgs, keys)
 
     def test_fetch(self):
-        """ fetch() retrieves a package from the database """
+        """fetch() retrieves a package from the database"""
         pkg = make_package(factory=DynamoPackage)
         self._save_pkgs(pkg)
         saved_pkg = self.db.fetch(pkg.filename)
         self.assertEqual(saved_pkg, pkg)
 
     def test_fetch_missing(self):
-        """ fetch() returns None if no package exists """
+        """fetch() returns None if no package exists"""
         saved_pkg = self.db.fetch("missing_pkg-1.2.tar.gz")
         self.assertIsNone(saved_pkg)
 
     def test_all_versions(self):
-        """ all() returns all versions of a package """
+        """all() returns all versions of a package"""
         pkgs = [
             make_package(factory=DynamoPackage),
             make_package(version="1.3", filename="mypath3", factory=DynamoPackage),
@@ -826,10 +840,10 @@ class TestDynamoCache(unittest.TestCase):
         ]
         self._save_pkgs(*pkgs)
         saved_pkgs = self.db.all("mypkg")
-        self.assertItemsEqual(saved_pkgs, pkgs[:2])
+        self.assertCountEqual(saved_pkgs, pkgs[:2])
 
     def test_distinct(self):
-        """ distinct() returns all unique package names """
+        """distinct() returns all unique package names"""
         pkgs = [
             make_package(factory=DynamoPackage),
             make_package(version="1.3", filename="mypath3", factory=DynamoPackage),
@@ -837,10 +851,10 @@ class TestDynamoCache(unittest.TestCase):
         ]
         self._save_pkgs(*pkgs)
         saved_pkgs = self.db.distinct()
-        self.assertItemsEqual(saved_pkgs, set([p.name for p in pkgs]))
+        self.assertCountEqual(saved_pkgs, set([p.name for p in pkgs]))
 
     def test_search_or(self):
-        """ search() returns packages that match the query """
+        """search() returns packages that match the query"""
         pkgs = [
             make_package(factory=DynamoPackage),
             make_package(
@@ -856,10 +870,10 @@ class TestDynamoCache(unittest.TestCase):
         self._save_pkgs(*pkgs)
         criteria = {"name": ["mypkg"], "summary": ["mypkg"]}
         packages = self.db.search(criteria, "or")
-        self.assertItemsEqual(packages, pkgs[:-1])
+        self.assertCountEqual(packages, pkgs[:-1])
 
     def test_search_and(self):
-        """ search() returns packages that match the query """
+        """search() returns packages that match the query"""
         pkgs = [
             make_package(factory=DynamoPackage),
             make_package(
@@ -875,10 +889,10 @@ class TestDynamoCache(unittest.TestCase):
         self._save_pkgs(*pkgs)
         criteria = {"name": ["my", "pkg"], "summary": ["this", "mypkg"]}
         packages = self.db.search(criteria, "and")
-        self.assertItemsEqual(packages, pkgs[:-1])
+        self.assertCountEqual(packages, pkgs[:-1])
 
     def test_summary(self):
-        """ summary constructs per-package metadata summary """
+        """summary constructs per-package metadata summary"""
         self.db.upload("pkg1-0.3a2.tar.gz", BytesIO(b"test1234"), "pkg1", "0.3a2")
         self.db.upload("pkg1-1.1.tar.gz", BytesIO(b"test1234"), "pkg1", "1.1")
         p1 = self.db.upload(
@@ -888,7 +902,7 @@ class TestDynamoCache(unittest.TestCase):
             "pkg2.tar.gz", BytesIO(b"test1234"), "pkg2", "0.1dev2", "summary"
         )
         summaries = self.db.summary()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             summaries,
             [
                 {
@@ -905,7 +919,7 @@ class TestDynamoCache(unittest.TestCase):
         )
 
     def test_multiple_packages_same_version(self):
-        """ Can upload multiple packages that have the same version """
+        """Can upload multiple packages that have the same version"""
         with patch.object(self.db, "allow_overwrite", False):
             name, version = "a", "1"
             path1 = "old_package_path-1.tar.gz"
@@ -917,7 +931,7 @@ class TestDynamoCache(unittest.TestCase):
             self.assertEqual(len(all_versions), 2)
 
     def test_clear_all_keep_throughput(self):
-        """ Calling clear_all will keep same table throughput """
+        """Calling clear_all will keep same table throughput"""
         throughput = {}
         for model in (DynamoPackage, PackageSummary):
             tablename = model.meta_.ddb_tablename(self.engine.namespace)
@@ -940,7 +954,7 @@ class TestDynamoCache(unittest.TestCase):
                 self.assertEqual(index.throughput.write, 7)
 
     def test_upload_no_summary(self):
-        """ upload() saves package even when there is no summary """
+        """upload() saves package even when there is no summary"""
         pkg = make_package(factory=DynamoPackage)
         self.db.upload(
             pkg.filename, BytesIO(b"test1234"), pkg.name, pkg.version, summary=""
@@ -952,16 +966,16 @@ class TestDynamoCache(unittest.TestCase):
         self.storage.upload.assert_called_with(pkg, ANY)
 
     def test_check_health_success(self):
-        """ check_health returns True for good connection """
+        """check_health returns True for good connection"""
         ok, msg = self.db.check_health()
         self.assertTrue(ok)
 
     def test_check_health_fail(self):
-        """ check_health returns False for bad connection """
+        """check_health returns False for bad connection"""
         dbmock = self.db.engine = MagicMock()
 
         def throw(*_, **__):
-            """ Throw an exception """
+            """Throw an exception"""
             raise Exception("DB exception")
 
         dbmock.scan.side_effect = throw

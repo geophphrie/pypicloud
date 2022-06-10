@@ -48,22 +48,22 @@ class AWSSecretsManagerAccessBackend(IMutableJsonAccessBackend):
         return kwargs
 
     def _get_db(self):
-        """ Hit a server endpoint and return the json response """
+        """Hit a server endpoint and return the json response"""
         try:
             response = self.client.get_secret_value(SecretId=self.secret_id)
         except ClientError as e:
             if e.response["Error"]["Code"] == "ResourceNotFoundException":
                 return {}
             elif e.response["Error"]["Code"] == "InvalidRequestException":
-                raise Exception("The request was invalid due to:", e)
+                raise Exception("The request was invalid due to:", e) from e
             elif e.response["Error"]["Code"] == "InvalidParameterException":
-                raise Exception("The request had invalid params:", e)
+                raise Exception("The request had invalid params:", e) from e
             raise
 
         try:
             return json.loads(response["SecretString"])
         except JSONDecodeError as e:
-            raise Exception("Invalid json detected: {}".format(e))
+            raise Exception("Invalid json detected: {}".format(e)) from e
 
     def _save(self):
         if not self.dirty:
@@ -71,7 +71,7 @@ class AWSSecretsManagerAccessBackend(IMutableJsonAccessBackend):
             self.request.tm.get().addAfterCommitHook(self._do_save)
 
     def _do_save(self, succeeded):
-        """ Save the auth data to the backend """
+        """Save the auth data to the backend"""
         if not succeeded:
             return
         kwargs = {"SecretString": json.dumps(self._db)}

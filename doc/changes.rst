@@ -2,6 +2,32 @@ Changelog
 =========
 If you are upgrading an existing installation, read :ref:`the instructions <upgrade>`
 
+1.2.4 - 2021/6/10
+-----------------
+* Fix missing permissions for non-admin users (:issue:`284`)
+
+1.2.3 - 2021/6/9
+----------------
+* Add Pyramid>=2.0 to dependencies (:issue:`283`)
+
+1.2.2 - 2021/6/8
+----------------
+* Upgrade to Pyramid 2.0
+* Remove the SQL index from package summary field (will take effect when you rebuild your cache, but a rebuild is not required)
+
+1.2.1 - 2021/5/18
+-----------------
+* Fix a XSS vulnerability (:issue:`280`)
+* Remove storage limit of package summary (:pr:`276`) (will take effect when you rebuild your cache, but a rebuild is not required unless you hit this issue)
+
+1.2.0 - 2021/3/1
+----------------
+* Add more package info to JSON API (:pr:`269`)
+* Stop normalizing metadata for Azure (:pr:`272`)
+* Provide Azure credentials via environment variable (:issue:`270`)
+* Pin the Pyramid version to avoid deprecation (:issue:`274`)
+* Dropping support for Python 3.5 and 3.6 due to difficulty with cryptography library
+
 1.1.7 - 2020/11/16
 ------------------
 * Fix a datetime crash when reloading the cache (:issue:`266`)

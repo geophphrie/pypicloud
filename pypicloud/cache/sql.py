@@ -4,7 +4,16 @@ import logging
 
 import zope.sqlalchemy
 from pyramid.settings import asbool
-from sqlalchemy import Column, DateTime, String, and_, distinct, engine_from_config, or_
+from sqlalchemy import (
+    Column,
+    DateTime,
+    String,
+    Text,
+    and_,
+    distinct,
+    engine_from_config,
+    or_,
+)
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.mutable import Mutable
@@ -41,7 +50,7 @@ class JSONEncodedDict(TypeDecorator):  # pylint: disable=W0223
 
 class MutableDict(Mutable, dict):
 
-    """ SQLAlchemy dict field that tracks changes """
+    """SQLAlchemy dict field that tracks changes"""
 
     @classmethod
     def coerce(cls, key, value):
@@ -74,6 +83,7 @@ MutableDict.associate_with(JSONEncodedDict)
 
 class TZAwareDateTime(TypeDecorator):  # pylint: disable=W0223
     impl = DateTime
+    cache_ok = True
 
     def process_bind_param(self, value, dialect):
         if value.tzinfo is None:
@@ -88,14 +98,15 @@ class TZAwareDateTime(TypeDecorator):  # pylint: disable=W0223
 
 class SQLPackage(Package, Base):
 
-    """ Python package stored in SQLAlchemy """
+    """Python package stored in SQLAlchemy"""
 
     __tablename__ = "packages"
     filename = Column(String(255, convert_unicode=True), primary_key=True)
     name = Column(String(255, convert_unicode=True), index=True, nullable=False)
     version = Column(String(1000, convert_unicode=True), nullable=False)
     last_modified = Column(TZAwareDateTime(), index=True, nullable=False)
-    summary = Column(String(1000, convert_unicode=True), index=True, nullable=True)
+    # TEXT, as pypi does the same, and using String(N) would mismatch with pypi
+    summary = Column(Text(), nullable=True)
     data = Column(JSONEncodedDict(), nullable=False)
     origin = Column(String(16, convert_unicode=True), nullable=True)
 
@@ -136,7 +147,7 @@ def drop_schema(engine):
 
 class SQLCache(ICache):
 
-    """ Caching database that uses SQLAlchemy """
+    """Caching database that uses SQLAlchemy"""
 
     def __init__(self, request=None, dbmaker=None, graceful_reload=False, **kwargs):
         super(SQLCache, self).__init__(request, **kwargs)

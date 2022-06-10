@@ -13,21 +13,21 @@ from pypicloud.models import Package
 from .base import ICache
 
 try:
-    from flywheel import Engine, Model, Field, GlobalIndex, __version__
+    from flywheel import Engine, Field, GlobalIndex, Model, __version__
 
     if parse_version(__version__) < parse_version("0.2.0"):  # pragma: no cover
         raise ValueError("Pypicloud requires flywheel>=0.2.0")
-except ImportError:  # pragma: no cover
+except ImportError as e:  # pragma: no cover
     raise ImportError(
         "You must 'pip install flywheel' before using " "DynamoDB as the cache database"
-    )
+    ) from e
 
 LOG = logging.getLogger(__name__)
 
 
 class DynamoPackage(Package, Model):
 
-    """ Python package stored in DynamoDB """
+    """Python package stored in DynamoDB"""
 
     __metadata__ = {"global_indexes": [GlobalIndex("name-index", "name")]}
     filename = Field(hash_key=True)
@@ -46,7 +46,7 @@ class DynamoPackage(Package, Model):
 
 class PackageSummary(Model):
 
-    """ Aggregate data about packages """
+    """Aggregate data about packages"""
 
     name = Field(hash_key=True)
     summary = Field()
@@ -60,7 +60,7 @@ class PackageSummary(Model):
 
 class DynamoCache(ICache):
 
-    """ Caching database that uses DynamoDB """
+    """Caching database that uses DynamoDB"""
 
     def __init__(self, request=None, engine=None, graceful_reload=False, **kwargs):
         super(DynamoCache, self).__init__(request, **kwargs)
@@ -134,7 +134,7 @@ class DynamoCache(ICache):
         self._maybe_delete_summary(package.name)
 
     def _maybe_delete_summary(self, package_name):
-        """ Check for any package with the name. Delete summary if 0 """
+        """Check for any package with the name. Delete summary if 0"""
         remaining = (
             self.engine(DynamoPackage)
             .filter(DynamoPackage.name == package_name)

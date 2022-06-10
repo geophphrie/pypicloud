@@ -48,25 +48,19 @@ class Package(object):
             self.last_modified = utcnow()
         if self.last_modified.tzinfo is None:
             self.last_modified = self.last_modified.replace(tzinfo=UTC)
-        # Disallow empty summary string.
-        # 2021-02-01 - jtc - Also truncate to make sure we don't overrun the data column!
-        # See cache/sql.py for schema with column sizes. Length has been extended from original 255 to 1000
-        # as there are packages in pypi well over 255. E.g. msal==1.8.0 has a summary of length 281.
-        # I have not addressed name, version, filename although these also could potentially cause breakage.
-        # They are substantially longer than the maximum observed sizes (e.g. see https://martin-thoma.com/pypi-2020/ )
-        # and it might take some analysis to make sure that truncating would not cause other issues.
-        self.summary = summary[:1000] if summary else None
+        # Disallow empty string
+        self.summary = summary or None
         self.origin = origin or None
         # Filter out None or empty string
         self.data = {k: v for k, v in kwargs.items() if v}
 
     def get_url(self, request):
-        """ Create path to the download link """
+        """Create path to the download link"""
         return request.db.get_url(self)
 
     @property
     def parsed_version(self):
-        """ Parse and cache the version using pkg_resources """
+        """Parse and cache the version using pkg_resources"""
         # Use getattr because __init__ isn't called by some ORMs.
         if getattr(self, "_parsed_version", None) is None:
             self._parsed_version = pkg_resources.parse_version(self.version)
@@ -74,12 +68,12 @@ class Package(object):
 
     @property
     def is_prerelease(self):
-        """ Returns True if the version is a prerelease version """
+        """Returns True if the version is a prerelease version"""
         return re.match(r"^\d+(\.\d+)*$", self.version) is None
 
     @staticmethod
     def read_metadata(blob):
-        """ Read metadata from a blob """
+        """Read metadata from a blob"""
         metadata = {}
         for field in METADATA_FIELDS:
             value = blob.get(field)
@@ -92,7 +86,7 @@ class Package(object):
         return metadata
 
     def get_metadata(self):
-        """ Returns the package metadata as a dict """
+        """Returns the package metadata as a dict"""
         metadata = Package.read_metadata(self.data)
         if self.summary:
             metadata["summary"] = self.summary
@@ -129,7 +123,7 @@ class Package(object):
         }
 
     def search_summary(self):
-        """ Data to return from a pip search """
+        """Data to return from a pip search"""
         return {
             "name": self.name,
             "summary": self.summary or "",  # May be None
